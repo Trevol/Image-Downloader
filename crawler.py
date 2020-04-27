@@ -16,6 +16,7 @@ import shutil
 from urllib.parse import unquote, quote
 from selenium import webdriver
 from selenium.webdriver import DesiredCapabilities
+from selenium.common.exceptions import ElementClickInterceptedException
 import requests
 from concurrent import futures
 
@@ -70,7 +71,7 @@ def google_image_url_from_webpage(driver, max_number, quiet=False):
         except Exception as e:
             print("Exception ", e)
             pass
-    
+
     if len(thumb_elements) == 0:
         return []
 
@@ -83,14 +84,18 @@ def google_image_url_from_webpage(driver, max_number, quiet=False):
         if not elem.is_displayed() or not elem.is_enabled():
             retry_click.append(elem)
             continue
-        elem.click()
+        try:
+            elem.click()
+        except ElementClickInterceptedException as e:
+            print("ElementClickInterceptedException ", e)
+            pass
 
-    if len(retry_click) > 0:    
+    if len(retry_click) > 0:
         my_print("Retry some failed clicks ...", quiet)
         for elem in retry_click:
             if elem.is_displayed() and elem.is_enabled():
                 elem.click()
-    
+
     image_elements = driver.find_elements_by_class_name("islib")
     image_urls = list()
     url_pattern = r"imgurl=\S*&amp;imgrefurl"
@@ -171,7 +176,7 @@ def baidu_get_image_url_using_api(keywords, max_number=10000, face_only=False,
             url = url.replace(k, v)
         return url.translate(translate_table)
 
-    base_url = "https://image.baidu.com/search/acjson?tn=resultjson_com&ipn=rj&ct=201326592"\
+    base_url = "https://image.baidu.com/search/acjson?tn=resultjson_com&ipn=rj&ct=201326592" \
                "&lm=7&fp=result&ie=utf-8&oe=utf-8&st=-1"
     keywords_str = "&word={}&queryWord={}".format(
         quote(keywords), quote(keywords))
@@ -201,7 +206,7 @@ def baidu_get_image_url_using_api(keywords, max_number=10000, face_only=False,
         def process_batch(batch_no, batch_size):
             image_urls = list()
             url = query_url + \
-                "&pn={}&rn={}".format(batch_no * batch_size, batch_size)
+                  "&pn={}&rn={}".format(batch_no * batch_size, batch_size)
             try_time = 0
             while True:
                 try:
@@ -234,7 +239,7 @@ def baidu_get_image_url_using_api(keywords, max_number=10000, face_only=False,
 
 
 def crawl_image_urls(keywords, engine="Google", max_number=10000,
-                     face_only=False, safe_mode=False, proxy=None, 
+                     face_only=False, safe_mode=False, proxy=None,
                      proxy_type="http", quiet=False, browser="phantomjs"):
     """
     Scrape image urls of keywords from Google Image Search
@@ -300,7 +305,7 @@ def crawl_image_urls(keywords, engine="Google", max_number=10000,
         driver.set_window_size(1920, 1080)
         driver.get(query_url)
         image_urls = bing_image_url_from_webpage(driver)
-    else:   # Baidu
+    else:  # Baidu
         # driver.set_window_size(10000, 7500)
         # driver.get(query_url)
         # image_urls = baidu_image_url_from_webpage(driver)
